@@ -11,11 +11,12 @@ class tls_server{
     constructor(options, connection_callback){
         this.clients = [];
         this.current_id = 0;
+        this.ext_on_connection = connection_callback;
 
         //Handle client connection.
         let on_connection = (socket) =>{
             let client = this.add_client(socket);
-            connection_callback(client);
+            this.ext_on_connection(client);
         };
 
         //Create the Server
@@ -23,6 +24,14 @@ class tls_server{
         this.server.listen(options.port);
     }
 
+    /**
+     * Set the function to be called on client connection
+     * @param event the function to be called, passed the connection as its argument.
+     */
+    set_connection_event(event){
+        this.ext_on_connection = event;
+    }
+z
     /**
      * Create a new client with the given socket and assign it a free id.
      * @param socket

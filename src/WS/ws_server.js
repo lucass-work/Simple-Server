@@ -138,6 +138,14 @@ class ws_connection{
     }
 
     /**
+     * Add a message event
+     * @param event the event to be added.
+     */
+    add_message_event(event){
+        this.events.push(event);
+    }
+
+    /**
      * Remove a message event with matching command if it exists.
      * @param command
      */
