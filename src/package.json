@@ -1,0 +1,22 @@
+{
+  "name": "simple_server",
+  "version": "1.0.0",
+  "description": "A simple server and security implementation",
+  "main": "index.js",
+  "directories": {
+    "example": "example"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/lucass-work/Simple-Server.git"
+  },
+  "author": "Lucas",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/lucass-work/Simple-Server/issues"
+  },
+  "homepage": "https://github.com/lucass-work/Simple-Server#readme"
+}
