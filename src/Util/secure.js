@@ -13,10 +13,9 @@ The default set of options to use for crypto here
 let default_options = {
     csprng_bits : 256,
     csprng_base : 2,
-    aes_type : "aes-162-cbc",
+    aes_type : "aes-192-cbc",
     salt_length : 48,
-    key_length : 128,
-    iv_length : 48,
+    key_length : 24,//if using aes-x-cbc this must be x/8
 };
 
 /**
@@ -72,7 +71,7 @@ Symmetric Encryption
  * Creates a new cipher object and returns the generated key, cipher object and initialisation vector.
  * @param callback called once generated.
  * @param password the password to be used
- * @param algorithm the algorith to use, default is AES 162
+ * @param algorithm the algorith to use, default is AES 192
  */
 function create_cipher(callback, password, algorithm = default_options.aes_type){
     //generate random salt for key production
@@ -80,49 +79,49 @@ function create_cipher(callback, password, algorithm = default_options.aes_type)
 
     //Handle cipher creation once scrypt completed
     let make_cipher = (key) => {
-        let iv = random(48);
-        let cipher = crypto.createCipheriv(algorithm,key,iv);
+        let iv = random(16 * 4, 16);
+        let created_cipher = crypto.createCipheriv(algorithm,key,iv);
         let cipher_options = {
-            key : key,
             password : password,
             salt : salt,
             iv : iv,
             algorithm : algorithm,
         };
 
-        return new cipher(cipher,cipher_options);
+        callback(new cipher(created_cipher,cipher_options,key));
     };
 
     //create the key via scrypt
-    let key = crypto.scrypt(password,salt,default_options.key_length,(err,derivedKey) => {make_cipher(derivedKey)});
+    crypto.scrypt(password,salt,default_options.key_length,(err,derivedKey) => {make_cipher(derivedKey)});
 }
 
 /**
  * Create a cipher object based upon initial cipher options.
  * @param cipher_options the options to be used to produce the cipher object.
  */
-function load_cipher(cipher_options){
+function load_cipher(callback,cipher_options){
     let {algorithm,password,iv,salt} = cipher_options;
 
     //create cipher once scrypt finishes.
     let make_cipher = (key) => {
         let cipher = crypto.createCipheriv(algorithm,key,iv);
 
-        return new cipher(cipher,{
+        callback(new cipher(cipher,{
             key : key,
             ...cipher_options
-        });
+        }));
     };
 
     //create the key via scrypt
-    let key = crypto.scrypt(password,salt,default_options.key_length,(err,derivedKey) => {make_cipher(derivedKey)});
+    crypto.scrypt(password,salt,default_options.key_length,(err,derivedKey) => {make_cipher(derivedKey)});
 }
 
 class cipher{
-    constructor(cipher,cipher_options){
+    constructor(cipher,cipher_options,key){
         let options = this.cipher_options = cipher_options;
+        this.key = key;//this buffer refuses to be parsed inside of cipher_options...
         this.cipher = cipher;
-        this.decipher = crypto.createDecipheriv(options.algorithm,options.key,options.iv);
+        this.decipher = crypto.createDecipheriv(options.algorithm,key,options.iv);
     }
 
     /**
@@ -156,10 +155,8 @@ class cipher{
             return null;
         }
 
-        let write_stream = new stream.Writable();
-
-        write_stream.pipe(this.cipher).pipe(output_stream);
-        return write_stream;
+        this.cipher.pipe(output_stream);
+        return this.cipher;
     }
 
     /**
@@ -173,10 +170,16 @@ class cipher{
             return null;
         }
 
-        let write_stream = new stream.Writable();
+        this.decipher.pipe(output_stream);
+        return this.decipher;
+    }
 
-        write_stream.pipe(this.decipher).pipe(output_stream);
-        return write_stream;
+    /**
+     * Renews the current cipher with already set key and password.
+     */
+    renew(){
+        let {algorithm , key , iv} = this.cipher_options;
+        this.cipher = crypto.createCipheriv(algorithm,key,iv);
     }
 
 }
@@ -184,4 +187,18 @@ class cipher{
 /*
 Asymmetric Encryption
  */
+
+
+
+/*
+Exports
+ */
+
+module.exports = {
+    set_options : set_options,
+    random : random,
+    random_exclude : random_exclude,
+    create_cipher : create_cipher,
+    load_cipher : load_cipher,
+};
 
