@@ -31,7 +31,7 @@ class tls_server{
     set_connection_event(event){
         this.ext_on_connection = event;
     }
-z
+
     /**
      * Create a new client with the given socket and assign it a free id.
      * @param socket

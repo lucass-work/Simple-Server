@@ -4,25 +4,25 @@
 To be included in your web side client as a module
  */
 
-class ws_connection{
+export class ws_connection{
     constructor(socket){
         this.socket = socket;
 
-        //setup socket events
-        socket.onmessage = this.on_message;
-        socket.onerror = (error) => console.log(error);
-
         //setup events
         this.events = [];
+
+        //setup socket events
+        socket.onmessage = (message) => {this.on_message(message,this)};
+        socket.onerror = (error) => console.log(error);
     }
 
     /**
      * Execute functions given by the message.
      * @param message
      */
-    on_message(message){
+    on_message(message,connection){
         let data;
-
+        let events = connection.events;
         //Convert the JSON message to an array
         try{
             data = JSON.parse(message.data.toString());
@@ -52,7 +52,7 @@ class ws_connection{
         this.events.push({
             cmd : command,
             action : action,
-        })
+        });
     }
 
     /**
@@ -121,6 +121,6 @@ class ws_connection{
  * @param address
  * @returns {ws_connection}
  */
-function connect_to_ws_server(address){
+export default function connect_to_ws_server(address){
     return new ws_connection(new WebSocket(address));
 }

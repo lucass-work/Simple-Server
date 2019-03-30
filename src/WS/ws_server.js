@@ -1,35 +1,28 @@
 let ws = require('ws');
 
 class ws_server{
-    constructor(options){
+    constructor(options,connection_event){
         let server = this.server = new ws.Server(options);
         let connections = this.connections =  [];
         let client_id = 0;
 
+        //setup external client events
+        this.connection_event = connection_event;
+
         //handle server events
-        server.on("connection",(socket,req)=>{
+        server.on("connection" ,(socket,req)=> {
             let connection_info = {
                 ip : req.connection.remoteAddress,
                 id : client_id ++,
                 server : this,
             };
-            let connection = new ws_connection((socket,connection_info));
+
+            let connection = new ws_connection(socket,connection_info);
 
             connections.push(connection);
-            ext_on_connection(connection);
+            connection_event(connection);
         });
-        server.on("error",(err) => {console.log(err)});
-
-        //setup external client events
-        this.ext_on_connection = (connection) => {};
-    }
-
-    /**
-     * Set the event called on a new connection.
-     * The new ws_connection is passed as the argument.
-     */
-    set_connection_event(action){
-        this.ext_on_connection = action;
+        server.on("error", (err) => {console.log(err)});
     }
 
     /**
@@ -92,7 +85,7 @@ class ws_connection{
         this.connection_info = connection_info;
 
         //setup socket events
-        socket.on("message",(message)=> this.on_message(message));
+        socket.on("message",(message) => this.on_message(message));
 
         //setup events
         this.events = [];
@@ -102,41 +95,34 @@ class ws_connection{
      * Execute functions given by the message.
      * @param message
      */
-    on_message(message){
+    on_message(message) {
         let data;
 
         //Convert the JSON message to an array
-        try{
+        try {
             data = JSON.parse(message.toString());
-        }catch {
+        } catch {
             console.log("Incorrectly formatted JSON: " + message.toString());
             return;
         }
 
-        //execute the received from commands:
-        for(let event of data) {
+        //execute the received from commands
+        for (let event of data) {
+            let event_found = false;
+
             for (let possible_event of this.events) {
                 if (possible_event.cmd === event.cmd) {
-                    possible_event.action(event.data);
+                    possible_event.action(this,event.data);
+                    event_found = true;
                     break;
                 }
             }
+
+            if(!event_found) {
+                console.log(`No command found for : ${event.cmd}`);
+            }
         }
     }
-
-    /**
-     * Add a message event
-     * @param command the command to listen for
-     * @param action the function to be executed, has message.data passed as its only arguement.nn
-     *
-     */
-    add_message_event(command,action){
-        this.events.push({
-            cmd : command,
-            action : action,
-        })
-    }
-
     /**
      * Add a message event
      * @param event the event to be added.

@@ -1,4 +1,4 @@
-let tls_server = require('tls_server');
+let tls_server = require('./tls_server');
 let tls = require('tls');
 
 /**
@@ -13,3 +13,4 @@ function connect(options){
 module.exports = {
     connect : connect,
 };
+
