@@ -76,19 +76,31 @@ class ws_server{
 
         console.log(`Could not find connection with id ${id}`);
     }
-
 }
 
 class ws_connection{
     constructor(socket,connection_info){
+
+
         this.socket = socket;
         this.connection_info = connection_info;
+        this.alive = false;
 
         //setup socket events
-        socket.on("message",(message) => this.on_message(message));
+        socket.on("message",(message) => connection.on_message(message));
 
         //setup events
         this.events = [];
+        let connection = this;
+
+        this.add_message_event({
+            cmd : "pong",
+            action : () => {connection.alive=true},
+        });
+
+        //setup disconnection
+        this.on_death = () => {};
+        this.heartbeat();
     }
 
     /**
@@ -123,6 +135,7 @@ class ws_connection{
             }
         }
     }
+
     /**
      * Add a message event
      * @param event the event to be added.
@@ -177,6 +190,10 @@ class ws_connection{
             return;
         }
 
+        if(this.socket.readyState === ws.CLOSED){
+            return;
+        }
+
         //setup error handling function
         let on_error = (err)=>{
             if(!err){
@@ -189,6 +206,26 @@ class ws_connection{
 
         //send the data
         this.socket.send(JSON.stringify(messages),on_error);
+    }
+
+    //Checks if the connection is still alive
+    heartbeat(){
+        let connection = this;
+
+        connection.alive = false;
+        connection.send({
+            cmd : "ping",
+        });
+
+        //start the heartbeat
+        setTimeout(() => {
+            if(connection.alive){
+                connection.heartbeat();
+                return;
+            }
+
+            connection.on_death(connection);
+        },500);
     }
 }
 

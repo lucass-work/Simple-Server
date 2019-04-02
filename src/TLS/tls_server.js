@@ -1,5 +1,4 @@
 let tls = require('tls');
-let fs = require('fs');
 
 //The TLS server.
 class tls_server{

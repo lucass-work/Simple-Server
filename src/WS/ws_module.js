@@ -5,7 +5,7 @@ To be included in your web side client as a module
  */
 
 export class ws_connection{
-    constructor(socket){
+    constructor(socket,check_alive){
         this.socket = socket;
 
         //setup events
@@ -14,6 +14,25 @@ export class ws_connection{
         //setup socket events
         socket.onmessage = (message) => {this.on_message(message,this)};
         socket.onerror = (error) => console.log(error);
+
+        //setup heartbeat
+        this.add_message_event("ping", () => {
+            this.alive = true;
+            this.send({ cmd : "pong" });
+        });
+        this.on_death = () => {};
+
+        if(check_alive) {
+            this.heartbeat();
+        }
+    }
+
+    /**
+     * Set a function to be called on socket opening, the ws_connection is passed as an arguement.
+     * @param action
+     */
+    set_on_open(action){
+        this.socket.onopen = action;
     }
 
     /**
@@ -97,7 +116,14 @@ export class ws_connection{
     send_list(messages){
         //check socket exists
         if(!this.socket) {
-            console.log("cannot send list data on non-existant websocket");
+            this.alive = false;
+            console.error("cannot send list data on non-existant websocket");
+            return;
+        }
+
+        if(this.socket.readyState === WebSocket.CLOSED){
+            this.alive = false;
+            console.error("cannot sent list data through closed websocket");
             return;
         }
 
@@ -114,13 +140,29 @@ export class ws_connection{
         //send the data
         this.socket.send(JSON.stringify(messages),on_error);
     }
+
+    //checks if the connection is still alive.
+    heartbeat(){
+        this.alive = false;
+        let connection = this;
+
+        setTimeout(() => {
+            if(!connection.alive){
+                connection.on_death(connection);
+                return;
+            }
+
+            connection.heartbeat();
+        },500);
+    }
 }
 
 /**
- * returns
- * @param address
+ * returns the created websocket connection
+ * @param address the address to connect to of the form ws://url
+ * @param check_alive Set if the connection should be pinged to check if it's alive, by default this is true
  * @returns {ws_connection}
  */
-export default function connect_to_ws_server(address){
-    return new ws_connection(new WebSocket(address));
+export default function connect_to_ws_server(address,check_alive = true){
+    return new ws_connection(new WebSocket(address),check_alive);
 }
